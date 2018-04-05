@@ -1,10 +1,12 @@
 (defproject ctrnn "0.1.0-SNAPSHOT"
-  :description "FIXME: write description"
-  :url "http://example.com/FIXME"
-  :license {:name "Eclipse Public License"
-            :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[org.clojure/clojure "1.8.0"]]
+  :description "Library for Continuous-Time Recurrent Neural Networks"
+  :url "https://github.com/oyvinht/clj-ctrnn"
+  :license
+  {
+   :name "MIT"
+   :url "https://github.com/oyvinht/clj-ctrnn/blob/master/LICENSE"
+   }
+  :dependencies [[org.clojure/clojure "1.9.0"]]
   :main ^:skip-aot ctrnn.core
-  :plugins [[cider/cider-nrepl "0.8.2"]]
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}})
