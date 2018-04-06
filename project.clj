@@ -7,6 +7,5 @@
    :url "https://github.com/oyvinht/clj-ctrnn/blob/master/LICENSE"
    }
   :dependencies [[org.clojure/clojure "1.9.0"]]
-  :main ^:skip-aot ctrnn.core
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}})

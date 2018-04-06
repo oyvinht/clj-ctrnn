@@ -1,10 +1,5 @@
 (ns ctrnn.core
-  (:require [ctrnn.neuron :as neuron])
-  (:gen-class))
-
-(defn -main
-  ""
-  [& args])
+  (:require [ctrnn.neuron :as neuron]))
 
 (defprotocol CTRNNP
   (add-neuron [net ^ctrnn.neuron.Neuron neuron])
