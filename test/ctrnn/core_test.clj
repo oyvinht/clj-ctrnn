@@ -1,46 +1,60 @@
 (ns ctrnn.core-test
   (:require [clojure.test :refer :all]
-            [ctrnn.core :refer :all]))
+            [ctrnn.core :refer :all]
+            [ctrnn.neuron :refer :all]))
 
 (deftest test-make-ctrnn
   (testing "Make a CTRNN"
-    (is (not (nil? (make-ctrnn))))))
+    (is (not (nil? (->CTRNN []))))))
+
+(defn make-test-neuron []
+  (->Neuron
+   0 ; bias
+   0 ; external-current
+   0 ; initial membrane-potential
+   1 ; time-constant
+   ))
 
 (deftest test-make-neuron
   (testing "Make a neuron"
-    (is (not (nil? (make-neuron))))))
+    (is (not (nil? (make-test-neuron))))))
 
-(deftest test-make-synapse
-  (testing "Make a synapse"
-    (is (not (nil? (make-synapse (make-neuron)))))))
-
-(deftest test-add-neuron
-  (testing "Make a CTRNN and add a neuron"
-    (is (= (count
-            ((add-neuron (make-ctrnn) (make-neuron))
-             :neurons))
-           1))))
+(deftest test-make-neuron-makes-neuron
+  (testing "Make a neuron makes a Neuron"
+    (is (instance? ctrnn.neuron.Neuron (make-test-neuron)))))
 
 (deftest test-add-synapse
-  (testing "Make a neuron connected to another neuron"
-    (is (= (count
-            ((add-synapse (make-neuron)
-                          (make-synapse (make-neuron)))
-             :synapses))
-            1))))
+  (testing "Add a synapse"
+    (is (not (nil? (add-synapse
+                    (make-test-neuron)
+                    (make-test-neuron)
+                    5))))))
 
-(deftest test-add-synapse-in-net
+(defn make-test-net []
+  (let [neuron-one (make-test-neuron)
+        neuron-two (make-test-neuron)]
+    (add-neuron (->CTRNN [neuron-one])
+                (add-synapse neuron-one neuron-two 5))))
+
+(deftest test-make-net
   (testing "Make a CTRNN with two neurons with a synapse between"
-    (let [neuron-one (make-neuron)
-          neuron-two (make-neuron)
-          net (add-neuron
-               (add-neuron (make-ctrnn) neuron-one)
-               (add-synapse neuron-two neuron-one))]
-      (is (= (reduce (fn [syn-sum neuron]
-                       (+ syn-sum (count (neuron :synapses))))
-                     0
-                     (net :neurons))
-             1)))))
+    (is (instance? ctrnn.core.CTRNN (make-test-net)))))
 
+(deftest test-net-has-two-neurons
+  (testing "Test CTRNN has two neurons"
+    (is (= (count (neurons (make-test-net))) 2))))
 
-                
+(deftest test-sensible-initial-firing-frequencies
+  (testing "Check calculated firing frequency of two neurons in a net"
+    (let [net (make-test-net)]
+      (is (every? #{0.5} (map (fn [neuron]
+                                (firing-frequency neuron))
+                              (neurons net)))))))
+
+(deftest test-sensible-future-firing-frequencies
+  (testing "Check calculated next membrane potential of two neurons"
+    (let [net (future-ctrnn (make-test-net) 2)]
+      (doall
+       (map (fn [n]
+              (println (firing-frequency n)))
+            (neurons net))))))
