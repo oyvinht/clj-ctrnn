@@ -5,7 +5,10 @@
 
 (deftest test-make-ctrnn
   (testing "Make a CTRNN"
-    (is (not (nil? (->CTRNN []))))))
+    (is (not (nil? (->CTRNN
+                    [] ; Initial neurons
+                    0.01 ; Timestep resolution (10 ms)
+                    ))))))
 
 (defn make-test-neuron []
   (->Neuron
@@ -33,7 +36,7 @@
 (defn make-test-net []
   (let [neuron-one (make-test-neuron)
         neuron-two (make-test-neuron)]
-    (add-neuron (->CTRNN [neuron-one])
+    (add-neuron (->CTRNN [neuron-one] 0.01)
                 (add-synapse neuron-one neuron-two 5))))
 
 (deftest test-make-net
@@ -53,7 +56,7 @@
 
 (deftest test-sensible-future-firing-frequencies
   (testing "Check calculated next membrane potential of two neurons"
-    (let [net (future-ctrnn (make-test-net) 2)]
+    (let [net (future-ctrnn (make-test-net))]
       (doall
        (map (fn [n]
               (println (firing-frequency n)))

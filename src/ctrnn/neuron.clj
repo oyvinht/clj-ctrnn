@@ -4,7 +4,7 @@
   (add-synapse [n from-neuron strength]
     "Add a synaptic connection from another neuron")
   (firing-frequency [n]
-    "Firing frequency with current mebrane potential and bias")
+    "Firing frequency (activation) for current mebrane potential and bias")
   (update-membrane-potential [n t]
     "Neuron with membrane potential at time t from current state"))
 
@@ -12,7 +12,12 @@
     [from-neuron strength])
 
 (defrecord Neuron
-    [bias external-current membrane-potential time-constant]
+    [
+     bias ; Sensivity to input
+     external-current
+     membrane-potential
+     time-constant ; How fast change happens (should be > than net timestep)
+     ]
   NeuronP
   (add-synapse [n from-neuron strength]
     (assoc n :synapses
@@ -25,11 +30,12 @@
     (assoc n :membrane-potential
            (+ (* t
                  (* (/ 1 (:time-constant n))
-                    (+ (- (:membrane-potential n))
-                       (:external-current n)
-                       (reduce (fn [in-sum synapse]
-                                 (* (:strength synapse)
-                                    (firing-frequency
-                                     (:from-neuron synapse))))
-                               0
-                               (:synapses n)))))))))
+                    (+
+                     (- (:membrane-potential n))
+                     (reduce (fn [in-sum synapse]
+                               (* (:strength synapse)
+                                  (firing-frequency
+                                   (:from-neuron synapse))))
+                             0
+                             (:synapses n))
+                     (:external-current n))))))))
