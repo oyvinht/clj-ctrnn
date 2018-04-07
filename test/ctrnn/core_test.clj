@@ -73,10 +73,57 @@
 
 (deftest t-firing-frequency-increases-over-time
   (testing "Check if firing frequency continues to change for one more timestep"
-    (let [net-one (future-ctrnn (make-test-net 0 -10))
+    (let [net-one (future-ctrnn (make-test-net 0 1))
           net-two (future-ctrnn net-one)]
       (is (some identity (map (fn [n-1 n-2]
                                 (> (firing-frequency n-2)
                                    (firing-frequency n-1)))
                               (neurons net-one)
                               (neurons net-two)))))))
+
+(defn bifurcative-bias [weights]
+  (/ (- (apply + weights)) 2))
+
+(defn sqrt [num]
+  (java.lang.Math/sqrt num))
+
+(defn bifurcation-points [self-weight bias]
+  (map (fn [sign]
+         (- (* (sign 2)
+               (java.lang.Math/log
+                (/ (+ (sqrt self-weight) (sqrt (- self-weight 4))) 2)))
+            (/ (sign self-weight (sqrt (* self-weight (- self-weight 4))))
+               2)
+            bias))
+       [+ -]))
+
+(deftest t-make-pulse-network
+  (testing "A complete network that pulsates"
+    ;; Make neurons
+    (let [neuron-1-weights [5 1]
+          neuron-2-weights [8 -2]
+          neuron-3-weights [7 1]
+          neuron-1 (->Neuron (bifurcative-bias neuron-1-weights) 0 0 0.2)
+          neuron-2 (->Neuron (bifurcative-bias neuron-2-weights) 0 0 0.2)
+          neuron-3 (->Neuron (bifurcative-bias neuron-3-weights) 0 0 0.2)]
+      ;; Connect to self
+      (let [neuron-1 (add-synapse neuron-1 neuron-1 (nth neuron-1-weights 0))
+            neuron-2 (add-synapse neuron-2 neuron-2 (nth neuron-2-weights 0))
+            neuron-3 (add-synapse neuron-3 neuron-3 (nth neuron-3-weights 0))]
+        ;; Lopp and write firing frequencies to file
+        (with-open [w (clojure.java.io/writer "net-output.dat")]
+          (loop [t 0
+                 net (->CTRNN
+                      [(add-synapse neuron-1 neuron-2 (nth neuron-1-weights 1))
+                       (add-synapse neuron-2 neuron-3 (nth neuron-2-weights 1))
+                       (add-synapse neuron-3 neuron-1 (nth neuron-3-weights 1))]
+                      0.001)]
+            (let [neurons (neurons net)]
+              (.write w
+                      (str t " "
+                           (firing-frequency (nth neurons 0)) " "
+                           (firing-frequency (nth neurons 1)) " "
+                           (firing-frequency (nth neurons 2)) "\n")))
+            (if (not (> t 2))
+              (recur (+ t 0.001) (future-ctrnn net)))))))))
+       

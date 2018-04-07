@@ -8,7 +8,7 @@
   (set-bias [n b]
     "Set neuron bias")
   (update-membrane-potential [n t]
-    "Neuron with membrane potential at time t from current state"))
+    "Approximate membrane potential for step t forward in time"))
 
 (defrecord Synapse
     [from-neuron strength])
@@ -32,14 +32,15 @@
     (assoc n :bias b))
   (update-membrane-potential [n t]
     (assoc n :membrane-potential
-           (+ (* t
-                 (* (/ 1 (:time-constant n))
-                    (+
-                     (- (:membrane-potential n))
+           (+ (:membrane-potential n)
+              (*
+               (/ (+ (- (:membrane-potential n))
                      (reduce (fn [in-sum synapse]
                                (* (:strength synapse)
-                                  (firing-frequency
-                                   (:from-neuron synapse))))
+                                  (firing-frequency (:from-neuron synapse))))
                              0
                              (:synapses n))
-                     (:external-current n))))))))
+                     (:external-current n))
+                  (:time-constant n))
+               t)))))
+
