@@ -1,0 +1,37 @@
+\documentclass[]{article}
+\usepackage{acronym}
+
+\title{Mathematical background for CTRNNs}
+
+\begin{document}
+
+\begin{acronym}
+  \acro{CTRNN}{Continuous-Time Recurrent Neural Network}
+\end{acronym}
+
+The clj-ctrnn library simulates \acs{CTRNN}s using the \textit{forward Euler method} for approximating a series of solutions to the ordinary differential equation that govern neuron membrane potentials. The equation is:
+\begin{equation}
+  \dot{y}_i = \frac{1}{\tau_i}(-y_i + \sum_{j=1}^{N}w_{ji}\sigma(y_j + \theta_j) + I_i)
+\end{equation}
+where:\\
+\begin{tabular}{ll}
+  $\tau_i$: & time-constant of post-synaptic neuron\\
+  $y_i$: & membrane potential of post-synaptic neuron\\
+  $w_{ji}$: & weight of connection between pre-synaptic neuron $j$ and post-synaptic neuron\\
+  $\sigma(x)$: & the sigmoid activation function in equation \ref{sigmoid-function}\\
+  $y_j$: & membrane potential of pre-synaptic neuron $j$\\
+  $\theta_j$: & bias (input sensivity) of pre-synaptic neuron $j$\\
+  $I_i$: & any external input (such as a sensor reading) to post-synaptic node\\
+\end{tabular}
+\begin{equation}
+  \label{sigmoid-function}
+  \sigma(x) = \frac{1}{1 + e^{-x}}
+\end{equation}
+For each step in time, $t$, with $t<\tau_i$, clj-ctrnn will
+\begin{enumerate}
+\item Approximate the rate of membrane potential change, $\frac{\Delta y}{\Delta t}$, for all neurons
+\item Synchronously update all membrane potentials $y_{i+1} = y_i + \frac{\Delta y}{\Delta t} \cdot t$
+\item Commit the new network state
+\end{enumerate}
+
+\end{document}
