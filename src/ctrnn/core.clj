@@ -23,4 +23,3 @@
                   (neuron/update-membrane-potential n (:timestep net)))
                 (:neurons net))))
   (neurons [net] (:neurons net)))
-

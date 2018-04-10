@@ -10,13 +10,13 @@
                     0.01 ; Timestep resolution (10 ms)
                     ))))))
 
+
 (defn make-test-neuron []
   (->Neuron
    0 ; bias
-   0 ; external-current
-   0 ; initial membrane-potential
-   0.5 ; time-constant
-   ))
+   0 ; external current
+   0 ; initial membrane potential
+   0.5)) ; time-constant
 
 (deftest t-make-neuron
   (testing "Make a neuron"
@@ -47,83 +47,88 @@
   (testing "Test CTRNN has two neurons"
     (is (= (count (neurons (make-test-net 0 0))) 2))))
 
-(deftest t-sensible-initial-firing-frequencies
-  (testing "Check calculated firing frequency of two neurons in a net"
+(deftest t-sensible-initial-activation
+  (testing "Check calculated activation of two neurons in a net"
     (let [net (make-test-net 0 0)]
       (is (every? #{0.5} (map (fn [neuron]
-                                (firing-frequency neuron))
+                                (activation neuron))
                               (neurons net)))))))
 
-(deftest t-sensible-future-firing-frequencies-with-stronger-synapse
-  (testing "Check higher firing frequency for stronger synapse"
+(deftest t-sensible-future-activation-with-stronger-synapse
+  (testing "Check higher activation for stronger synapse"
     (let [net (future-ctrnn (make-test-net 0 1))]
       (is (some (fn [freq] (> 0.5)) (map (fn [neuron]
-                                           (firing-frequency neuron))
+                                           (activation neuron))
                                          (neurons net)))))))
 
-(deftest t-sensible-future-firing-frequencies-with-stronger-bias
-  (testing "Check higher firing frequency for stronger bias"
+(deftest t-sensible-future-activation-with-stronger-bias
+  (testing "Check higher activation for stronger bias"
     (let [net-one (future-ctrnn (make-test-net 0 1))
           net-two (future-ctrnn (make-test-net 1 1))]
       (is (some identity (map (fn [n-1 n-2]
-                                (> (firing-frequency n-2)
-                                   (firing-frequency n-1)))
+                                (> (activation n-2)
+                                   (activation n-1)))
                               (neurons net-one)
                               (neurons net-two)))))))
 
-(deftest t-firing-frequency-increases-over-time
-  (testing "Check if firing frequency continues to change for one more timestep"
+(deftest t-activation-increases-over-time
+  (testing "Check if activation continues to change for one more timestep"
     (let [net-one (future-ctrnn (make-test-net 0 1))
           net-two (future-ctrnn net-one)]
       (is (some identity (map (fn [n-1 n-2]
-                                (> (firing-frequency n-2)
-                                   (firing-frequency n-1)))
+                                (> (activation n-2)
+                                   (activation n-1)))
                               (neurons net-one)
                               (neurons net-two)))))))
 
-(defn bifurcative-bias [weights]
-  (/ (- (apply + weights)) 2))
-
-(defn sqrt [num]
-  (java.lang.Math/sqrt num))
-
-(defn bifurcation-points [self-weight bias]
-  (map (fn [sign]
-         (- (* (sign 2)
-               (java.lang.Math/log
-                (/ (+ (sqrt self-weight) (sqrt (- self-weight 4))) 2)))
-            (/ (sign self-weight (sqrt (* self-weight (- self-weight 4))))
-               2)
-            bias))
-       [+ -]))
+(deftest test-single-neuron-net
+  (testing "Membrane potential of neuron in single neuron net"
+    (is
+     (every?
+      identity
+      (map = (list 0.0 3.3E-4 6.7E-4 9.9E-4 0.00132 0.00164)
+           ;; Make neuron
+           (let [neuron-1 (->Neuron -5 0 0 1)]
+             ;; Connect to self
+             (let [neuron-1 (add-synapse neuron-1 neuron-1 5)]
+               ;; Loop, collecting membrane potential reading
+               (loop [t 0
+                      net (->CTRNN [neuron-1] 0.01)
+                      potentials []]
+                 (let [neurons (neurons net)]
+                   (if (> t 0.05)
+                     (map (fn [val]
+                            (/ (java.lang.Math/round (* val 1.0E5)) 1.0E5))
+                          potentials)
+                     (recur (+ t 0.01)
+                            (future-ctrnn net)
+                            (conj potentials
+                                  (:membrane-potential (first neurons))))))))))))))
 
 (deftest t-make-pulse-network
   (testing "A complete network that pulsates"
     ;; Make neurons
-    (let [neuron-1-weights [5 1]
-          neuron-2-weights [8 -2]
-          neuron-3-weights [7 1]
-          neuron-1 (->Neuron (bifurcative-bias neuron-1-weights) 0 0 0.2)
-          neuron-2 (->Neuron (bifurcative-bias neuron-2-weights) 0 0 0.2)
-          neuron-3 (->Neuron (bifurcative-bias neuron-3-weights) 0 0 0.2)]
+    (let [neuron-1 (->Neuron 0 0 0 0.45)
+          neuron-2 (->Neuron 0 0 0 0.45)]
       ;; Connect to self
-      (let [neuron-1 (add-synapse neuron-1 neuron-1 (nth neuron-1-weights 0))
-            neuron-2 (add-synapse neuron-2 neuron-2 (nth neuron-2-weights 0))
-            neuron-3 (add-synapse neuron-3 neuron-3 (nth neuron-3-weights 0))]
-        ;; Lopp and write firing frequencies to file
+      (let [neuron-1 neuron-1 ;(add-synapse neuron-1 neuron-1 5)
+            neuron-2 neuron-2 ];(add-synapse neuron-2 neuron-2 5)]
+        ;; Loop and write activations to file
         (with-open [w (clojure.java.io/writer "net-output.dat")]
           (loop [t 0
                  net (->CTRNN
-                      [(add-synapse neuron-1 neuron-2 (nth neuron-1-weights 1))
-                       (add-synapse neuron-2 neuron-3 (nth neuron-2-weights 1))
-                       (add-synapse neuron-3 neuron-1 (nth neuron-3-weights 1))]
-                      0.001)]
+                      [neuron-1 neuron-2]
+;                      [(add-synapse neuron-1 neuron-2 5)
+;                       (add-synapse neuron-2 neuron-1 5)]
+                      0.01)]
             (let [neurons (neurons net)]
               (.write w
                       (str t " "
-                           (firing-frequency (nth neurons 0)) " "
-                           (firing-frequency (nth neurons 1)) " "
-                           (firing-frequency (nth neurons 2)) "\n")))
-            (if (not (> t 2))
-              (recur (+ t 0.001) (future-ctrnn net)))))))))
+                           (activation (nth neurons 0)) " "
+                           (activation (nth neurons 1)) " "
+                           (:membrane-potential (nth neurons 0)) " "
+                           (:membrane-potential (nth neurons 1)) "\n"
+                           )))
+            (if (not (> t 0.02))
+              (recur (+ t 0.01) (future-ctrnn net)))))))))
        
