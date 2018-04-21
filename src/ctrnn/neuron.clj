@@ -16,11 +16,11 @@
             0
             (:synapses neuron))))
 
-(defn make-neuron [id bias membrane-potential time-constant]
+(defn make-neuron [id bias time-constant]
   {:bias bias
    :id id
    :external-current 0
-   :membrane-potential membrane-potential
+   :membrane-potential 0
    :time-constant time-constant
    :synapses []})
 
