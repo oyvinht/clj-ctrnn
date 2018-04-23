@@ -98,3 +98,24 @@
                                   (:membrane-potential
                                    (first neurons))))))))))))))
 
+(deftest t-make-pulse-network
+  (testing "Make pulse network")
+  (let [neuron-1 (make-neuron -5 0.5)
+        neuron-2 (make-neuron 5 0.5)]
+    ;; Connect to self
+    (let [neuron-1 (add-synapse neuron-1 neuron-1 5)
+          neuron-2 (add-synapse neuron-2 neuron-2 5)]
+      ;; Connect to other
+      (let [neuron-1 (add-synapse neuron-1 neuron-2 10)
+            neuron-2 (add-synapse neuron-2 neuron-1 -10)]
+        ;; Loop and write activations to file
+        (with-open [w (clojure.java.io/writer "doc/net-output.dat")]
+          (loop [t 0
+                 net (make-ctrnn [neuron-1 neuron-2] 0.01)]
+            (let [neurons (:neurons net)]
+              (.write w
+                      (str t " "
+                           (activation ((:id neuron-1) neurons)) " "
+                           (activation ((:id neuron-2) neurons)) "\n")))
+            (if (not (> t 9.99))
+              (recur (+ t 0.01) (update-ctrnn net)))))))))
