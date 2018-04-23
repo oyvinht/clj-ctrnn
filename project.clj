@@ -6,6 +6,7 @@
    :name "MIT"
    :url "https://github.com/oyvinht/clj-ctrnn/blob/master/LICENSE"
    }
+  :codox {:output-path "doc/codox"}
   :dependencies [[org.clojure/clojure "1.9.0"]]
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}})
