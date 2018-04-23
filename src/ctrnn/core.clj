@@ -37,6 +37,11 @@
   [neuron bias]
   (assoc neuron :bias bias))
 
+(defn set-external-current
+  "Return neuron with external current set to given value."
+  [neuron external-current]
+  (assoc neuron :external-current external-current))
+
 (defn update-membrane-potential
   "Return neuron with membrane potential updated to next timestep."
   [n ctrnn]
