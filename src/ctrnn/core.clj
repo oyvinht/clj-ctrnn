@@ -78,6 +78,10 @@
   [ctrnn neuron]
   (assoc-in ctrnn [:neurons (:id neuron)] neuron))
 
+(defn neuron [ctrnn id]
+  "Return neuron with given id."
+  (get (:neurons ctrnn) id))
+
 (defn neurons
   "Return a seq of all neurons in the CTRNN."
   [ctrnn]
@@ -92,3 +96,10 @@
             (assoc m k (update-membrane-potential v ctrnn)))
           {}
           (:neurons ctrnn))))
+
+(defn update-neuron
+  "Return CTRNN with neuron of given id replaced by result from calling function
+  with neuron as first argument + rest args."
+  [ctrnn neuron-id function & args]
+  (assoc-in ctrnn [:neurons neuron-id]
+            (apply function (cons (neuron ctrnn neuron-id) args))))
