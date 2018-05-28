@@ -24,9 +24,9 @@
 
 (defn make-neuron
   "Return new neuron with given bias and time-constant."
-  [bias time-constant]
+  [bias time-constant & {:keys [id]}]
   {:bias bias
-   :id (keyword (gensym 'neuron-))
+   :id (or id (keyword (gensym 'neuron-)))
    :external-current 0
    :membrane-potential 0
    :time-constant time-constant
