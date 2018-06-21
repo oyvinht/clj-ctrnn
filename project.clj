@@ -1,4 +1,4 @@
-(defproject ctrnn "0.9.0"
+(defproject ctrnn "0.9.1"
   :description "Library for Continuous-Time Recurrent Neural Networks"
   :url "https://github.com/oyvinht/clj-ctrnn"
   :license
