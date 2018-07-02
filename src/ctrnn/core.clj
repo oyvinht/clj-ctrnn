@@ -82,6 +82,24 @@
   "Return neuron with given id."
   (get (:neurons ctrnn) id))
 
+(defn add-synapses
+  "Return new network with synaptic connections added."
+  [ctrnn & to-from-strength-triplets]
+  (loop [net ctrnn
+         remain to-from-strength-triplets]
+    (if (< (count remain) 3)
+      net
+      (let [triplet (take 3 remain)
+            to-id (nth triplet 0)
+            from-id (nth triplet 1)
+            strength (nth triplet 2)]
+        (recur (assoc-in net [:neurons to-id :synapses]
+                         (conj (:synapses (neuron net to-id))
+                               {:from-neuron-id from-id
+                                :id (keyword (gensym 'synapse-))
+                                :strength strength}))
+               (seq (drop 3 remain)))))))
+
 (defn neurons
   "Return a seq of all neurons in the CTRNN."
   [ctrnn]
@@ -103,3 +121,4 @@
   [ctrnn neuron-id function & args]
   (assoc-in ctrnn [:neurons neuron-id]
             (apply function (cons (neuron ctrnn neuron-id) args))))
+
