@@ -42,6 +42,11 @@
   [neuron external-current]
   (assoc neuron :external-current external-current))
 
+(defn forward-euler-change-estimate
+  "Estimate membrane potential at next step using the forward Euler method."
+  [timestep in-sum membr-pot t-const ext-curr]
+  (* timestep (/ (+ (- membr-pot) ext-curr in-sum) t-const)))
+
 (defn update-membrane-potential
   "Return neuron with membrane potential updated to next timestep."
   [n ctrnn]
@@ -56,12 +61,12 @@
                               (:synapses neuron))))]
     (assoc n :membrane-potential
            (+ (:membrane-potential n)
-              (* (:timestep ctrnn) ; Approximate change using forward Euler
-                 (/ (+ (- (:membrane-potential n))
-                       (:external-current n)
-                       (input-sum n ctrnn))
-                    (:time-constant n)))))))
-
+              (forward-euler-change-estimate
+               (:timestep ctrnn)
+               (input-sum n ctrnn)
+               (:membrane-potential n)
+               (:time-constant n)
+               (:external-current n))))))
 
 ;;;; ---------------------------------------------------------------------------
 ;;;; CTRNN
