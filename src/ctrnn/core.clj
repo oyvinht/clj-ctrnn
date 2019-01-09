@@ -10,15 +10,15 @@
 
 (defn activation
   "Return current activation (firing frequency) of neuron."
-  [neuron]
-  (/ 1 (+ 1 (Math/exp (- (+ (:membrane-potential neuron) (:bias neuron)))))))
+  [n]
+  (/ 1 (+ 1 (Math/exp (- (+ (:potential n) (:bias n)))))))
 
 (defn add-synapse
   "Return neuron with new synaptic connection added."
-  [neuron from-neuron strength]
-  (assoc neuron :synapses
-         (conj (:synapses neuron)
-               {:from-neuron-id (:id from-neuron)
+  [n from-n strength]
+  (assoc n :synapses
+         (conj (:synapses n)
+               {:from-neuron-id (:id from-n)
                 :id (keyword (gensym 'synapse-))
                 :strength strength})))
 
@@ -28,46 +28,46 @@
   {:bias bias
    :id (or id (keyword (gensym 'neuron-)))
    :external-current 0
-   :membrane-potential 0
+   :potential 0
    :time-constant time-constant
    :synapses []})
 
 (defn set-bias
   "Return neuron with bias set to given value."
-  [neuron bias]
-  (assoc neuron :bias bias))
+  [n bias]
+  (assoc n :bias bias))
 
 (defn set-external-current
   "Return neuron with external current set to given value."
-  [neuron external-current]
-  (assoc neuron :external-current external-current))
+  [n external-current]
+  (assoc n :external-current external-current))
+
+(defn set-potential
+  "Return copy of neuron with membrane potential set to given value."
+  [n potential]
+  (assoc n :potential potential))
+
+(defn input-sum
+  "Return sum of all inputs to neuron in ctrnn."
+  [n ctrnn]
+  (let [ns (:neurons ctrnn)]
+    (reduce (fn [in-sum synapse]
+              (+ in-sum
+                 (* (:strength synapse)
+                    (activation
+                     ((:from-neuron-id synapse) ns)))))
+            0
+            (:synapses n))))
 
 (defn forward-euler-change-estimate
-  "Estimate membrane potential at next step using the forward Euler method."
-  [timestep in-sum membr-pot t-const ext-curr]
-  (* timestep (/ (+ (- membr-pot) ext-curr in-sum) t-const)))
-
-(defn update-membrane-potential
-  "Return neuron with membrane potential updated to next timestep."
+  "Return estimated amount of change to current membrane potential."
   [n ctrnn]
-  (let [input-sum (fn [neuron ctrnn]
-                    (let [neurons (:neurons ctrnn)]
-                      (reduce (fn [in-sum synapse]
-                                (+ in-sum
-                                   (* (:strength synapse)
-                                      (activation
-                                       ((:from-neuron-id synapse) neurons)))))
-                              0
-                              (:synapses neuron))))]
-    (assoc n :membrane-potential
-           (+ (:membrane-potential n)
-              (forward-euler-change-estimate
-               (:timestep ctrnn)
-               (input-sum n ctrnn)
-               (:membrane-potential n)
-               (:time-constant n)
-               (:external-current n))))))
-
+  (* (:timestep ctrnn)
+     (/ (+ (- (:potential n))
+           (:external-current n)
+           (input-sum n ctrnn))
+        (:time-constant n))))
+  
 ;;;; ---------------------------------------------------------------------------
 ;;;; CTRNN
 ;;;; ---------------------------------------------------------------------------
@@ -80,8 +80,8 @@
 
 (defn add-neuron 
   "Return CTRNN with neuron added."
-  [ctrnn neuron]
-  (assoc-in ctrnn [:neurons (:id neuron)] neuron))
+  [ctrnn n]
+  (assoc-in ctrnn [:neurons (:id n)] n))
 
 (defn neuron [ctrnn id]
   "Return neuron with given id."
@@ -110,20 +110,74 @@
   [ctrnn]
   (vals (:neurons ctrnn)))
 
-(defn update-ctrnn
-  "Return CTRNN with neuron membrane potentials updated to next timestep."
+(defn update-ctrnn-forward-euler
+  "Return CTRNN with neuron membrane potentials updated to next timestep using
+  forward Euler method."
   [ctrnn]
   (assoc ctrnn :neurons
          (reduce-kv
           (fn [m k v]
-            (assoc m k (update-membrane-potential v ctrnn)))
+            (assoc m k (set-potential
+                        v (+ (:potential v)
+                             (forward-euler-change-estimate v ctrnn)))))
           {}
           (:neurons ctrnn))))
+
+(defn forward-euler-change-estimates
+  "Return a map with neuron id as key and change estimate as value."
+  [ctrnn]
+  (reduce (fn [estimates n]
+            (assoc estimates (:id n)
+                   (forward-euler-change-estimate n ctrnn)))
+          {}
+          (neurons ctrnn)))
+
+(defn update-potentials
+  "Add diff to corresponding current neuron potentials in ctrnn."
+  ([ctrnn diffs] (update-potentials ctrnn diffs 1))
+  ([ctrnn diffs amount]   
+   (assoc ctrnn :neurons
+          (reduce-kv
+           (fn [m k v]
+             (assoc m k (set-potential
+                         v (+ (:potential v)
+                              (* amount ((:id v) diffs))))))
+           {}
+           (:neurons ctrnn)))))
+          
+(defn update-ctrnn-runge-kutta
+  "Return CTRNN with neuron membrane potentials updated to next timestep using
+  4th order Runge-Kutta method."
+  [ctrnn]
+  (let [k1-changes (forward-euler-change-estimates ctrnn)
+        k1-ctrnn (update-potentials ctrnn k1-changes 5/10)
+        k2-changes (forward-euler-change-estimates k1-ctrnn)
+        k2-ctrnn (update-potentials k1-ctrnn k2-changes 5/10)
+        k3-changes (forward-euler-change-estimates k2-ctrnn)
+        k3-ctrnn (update-potentials k2-ctrnn k3-changes)
+        k4-changes (forward-euler-change-estimates k3-ctrnn)]
+    (assoc ctrnn :neurons
+           (reduce-kv
+            (fn [m k v]
+              (assoc m k (set-potential
+                          v (+ (:potential v)
+                               (/ (+ ((:id v) k1-changes)
+                                     (* 2 ((:id v) k2-changes))
+                                     (* 2 ((:id v) k3-changes))
+                                     ((:id v) k4-changes))
+                                  6)))))
+            {}
+            (:neurons ctrnn)))))
+
+(defn update-ctrnn
+  ""
+  [ctrnn]
+  (update-ctrnn-forward-euler ctrnn))
 
 (defn update-neuron
   "Return CTRNN with neuron of given id replaced by result from calling function
   with neuron as first argument + rest args."
-  [ctrnn neuron-id function & args]
-  (assoc-in ctrnn [:neurons neuron-id]
-            (apply function (cons (neuron ctrnn neuron-id) args))))
+  [ctrnn n-id function & args]
+  (assoc-in ctrnn [:neurons n-id]
+            (apply function (cons (neuron ctrnn n-id) args))))
 
