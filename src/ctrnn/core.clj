@@ -123,49 +123,40 @@
           {}
           (:neurons ctrnn))))
 
-(defn forward-euler-change-estimates
-  "Return a map with neuron id as key and change estimate as value."
-  [ctrnn]
-  (reduce (fn [estimates n]
-            (assoc estimates (:id n)
-                   (forward-euler-change-estimate n ctrnn)))
-          {}
-          (neurons ctrnn)))
+(defn next-k-state 
+  "Return a map with ctrnn and changes for each neuron."
+  [orig-ctrnn k-ctrnn step-fraction]
+  (reduce
+   (fn [state n]
+     (let [change (forward-euler-change-estimate n k-ctrnn)]
+       (assoc-in
+        (assoc-in state [:k-ctrnn :neurons (:id n) :potential]
+                  (+ (get-in orig-ctrnn [:neurons (:id n) :potential])
+                     (/ change step-fraction)))
+        [:k-changes (:id n)] change)))
+   {:k-ctrnn k-ctrnn}
+   (neurons k-ctrnn)))
 
-(defn update-potentials
-  "Add diff to corresponding current neuron potentials in ctrnn."
-  ([ctrnn diffs] (update-potentials ctrnn diffs 1))
-  ([ctrnn diffs amount]   
-   (assoc ctrnn :neurons
-          (reduce-kv
-           (fn [m k v]
-             (assoc m k (set-potential
-                         v (+ (:potential v)
-                              (* amount ((:id v) diffs))))))
-           {}
-           (:neurons ctrnn)))))
-          
 (defn update-ctrnn-runge-kutta
   "Return CTRNN with neuron membrane potentials updated to next timestep using
   4th order Runge-Kutta method."
   [ctrnn]
-  (let [k1-changes (forward-euler-change-estimates ctrnn)
-        k1-ctrnn (update-potentials ctrnn k1-changes 5/10)
-        k2-changes (forward-euler-change-estimates k1-ctrnn)
-        k2-ctrnn (update-potentials k1-ctrnn k2-changes 5/10)
-        k3-changes (forward-euler-change-estimates k2-ctrnn)
-        k3-ctrnn (update-potentials k2-ctrnn k3-changes)
-        k4-changes (forward-euler-change-estimates k3-ctrnn)]
+  (let [k1-state (next-k-state ctrnn ctrnn 2)
+        k2-state (next-k-state ctrnn (:k-ctrnn k1-state) 2)
+        k3-state (next-k-state ctrnn (:k-ctrnn k2-state) 1)
+        k4-state (next-k-state ctrnn (:k-ctrnn k3-state) 1)]
     (assoc ctrnn :neurons
            (reduce-kv
-            (fn [m k v]
-              (assoc m k (set-potential
-                          v (+ (:potential v)
-                               (/ (+ ((:id v) k1-changes)
-                                     (* 2 ((:id v) k2-changes))
-                                     (* 2 ((:id v) k3-changes))
-                                     ((:id v) k4-changes))
-                                  6)))))
+            (fn [net neuron-id n]
+              (assoc net neuron-id
+                     (assoc n :potential
+                            (+ (:potential n)
+                               (/
+                                (+ (get-in k1-state [:k-changes neuron-id])
+                                   (* 2 (get-in k2-state [:k-changes neuron-id]))
+                                   (* 2 (get-in k3-state [:k-changes neuron-id]))
+                                   (get-in k4-state [:k-changes neuron-id]))
+                                6)))))
             {}
             (:neurons ctrnn)))))
 
