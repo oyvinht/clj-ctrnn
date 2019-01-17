@@ -145,3 +145,29 @@
             (if (not (> t 250))
               (recur (+ t 1/100) (update-ctrnn-runge-kutta net)))))))))
 
+(deftest t-load-runge-kutta
+  (testing "Make network and integrate heavily with 4th-order Runge-Kutta.")
+  ;; Set locale to format numbers the way gnuplot expect them
+  (java.util.Locale/setDefault java.util.Locale/US)
+  (let [neuron-1 (make-neuron -5 1/2)
+        neuron-2 (make-neuron 5 1/2)]
+    ;; Connect to self
+    (let [neuron-1 (add-synapse neuron-1 neuron-1 5)
+          neuron-2 (add-synapse neuron-2 neuron-2 5)]
+      ;; Connect to other
+      (let [neuron-1 (add-synapse neuron-1 neuron-2 10)
+            neuron-2 (add-synapse neuron-2 neuron-1 -10)
+            start-millis (System/currentTimeMillis)]
+        ;; Integrate network several times
+        (is
+         (=
+          (activation
+           ((:id neuron-1)
+            (:neurons (loop [t 0
+                             net (make-ctrnn [neuron-1 neuron-2] 1/100)]
+                        (if (not (>= t 1000))
+                          (recur (+ t 1/100) (update-ctrnn-runge-kutta net))
+                          net)))))
+          0.7355561235763324)) ; Check that calculations are likely correct
+        ;; Print elapsed time
+        (println (- (System/currentTimeMillis) start-millis))))))
