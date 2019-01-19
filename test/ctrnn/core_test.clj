@@ -43,7 +43,7 @@
 (deftest t-sensible-initial-activation
   (testing "Check calculated activation of two neurons in a net"
     (let [net (make-test-net 0 0)]
-      (is (every? #{0.5} (for [[id neuron] (:neurons net)]
+      (is (every? #{0.5} (for [neuron (neurons net)]
                            (activation neuron)))))))
 
 (deftest t-sensible-update-activation-with-stronger-synapse
@@ -95,7 +95,7 @@
                      (recur (+ t 1/100)
                             (update-ctrnn-forward-euler net)
                             (conj potentials
-                                  (:potential
+                                  (potential
                                    (first neurons))))))))))))))
 
 (deftest t-make-pulse-network
@@ -114,11 +114,10 @@
         (with-open [w (clojure.java.io/writer "tex/net-output.dat")]
           (loop [t 0
                  net (make-ctrnn [neuron-1 neuron-2] 1/100)]
-            (let [neurons (:neurons net)]
-              (.write w
-                      (str (format "%.2f " (double t))
-                           (activation ((:id neuron-1) neurons)) " "
-                           (activation ((:id neuron-2) neurons)) "\n")))
+            (.write w
+                    (str (format "%.2f " (double t))
+                         (activation (neuron net (id neuron-1))) " "
+                         (activation (neuron net (id neuron-2))) "\n"))
             (if (not (>= t 10))
               (recur (+ t 1/100) (update-ctrnn-runge-kutta net)))))))))
 
@@ -137,11 +136,10 @@
         (with-open [w (clojure.java.io/writer "tex/rdbeer-output.dat")]
           (loop [t 0
                  net (make-ctrnn [neuron-1 neuron-2] 1/100)]
-            (let [neurons (:neurons net)]
-              (.write w
-                      (str (format "%.2f " (double t))
-                           (activation ((:id neuron-1) neurons)) " "
-                           (activation ((:id neuron-2) neurons)) "\n")))
+            (.write w
+                    (str (format "%.2f " (double t))
+                         (activation (neuron net (id neuron-1))) " "
+                         (activation (neuron net (id neuron-2))) "\n"))
             (if (not (> t 250))
               (recur (+ t 1/100) (update-ctrnn-runge-kutta net)))))))))
 
@@ -162,12 +160,13 @@
         (is
          (=
           (activation
-           ((:id neuron-1)
-            (:neurons (loop [t 0
-                             net (make-ctrnn [neuron-1 neuron-2] 1/100)]
-                        (if (not (>= t 1000))
-                          (recur (+ t 1/100) (update-ctrnn-runge-kutta net))
-                          net)))))
+           (neuron
+            (loop [t 0
+                   net (make-ctrnn [neuron-1 neuron-2] 1/100)]
+              (if (not (>= t 1000))
+                (recur (+ t 1/100) (update-ctrnn-runge-kutta net))
+                net))
+            (id neuron-1)))
           0.7355561235763324)) ; Check that calculations are likely correct
         ;; Print elapsed time
         (println (- (System/currentTimeMillis) start-millis))))))
