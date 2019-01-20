@@ -22,6 +22,9 @@
                 :id (keyword (gensym 'synapse-))
                 :strength strength})))
 
+(defn id [n]
+  (:id n))
+
 (defn make-neuron
   "Return new neuron with given bias and time-constant."
   [bias time-constant & {:keys [id]}]
@@ -31,6 +34,9 @@
    :potential 0
    :time-constant time-constant
    :synapses []})
+
+(defn potential [n]
+  (:potential n))
 
 (defn set-bias
   "Return neuron with bias set to given value."
