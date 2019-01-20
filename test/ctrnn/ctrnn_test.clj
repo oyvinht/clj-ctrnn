@@ -17,9 +17,9 @@
   (is (= (activation (make-test-net) 0)
          0.0066928509242848554)))
            
-(defn t-check-change-estimate []
-  (let [net (make-test-net)]
-    (forward-euler-change-estimate net 0)))
+;(defn t-check-change-estimate []
+;  (let [net (make-test-net)]
+;    (forward-euler-change-estimate net 0)))
 
 (defn t-load-runge-kutta []
   (let [start-millis (System/currentTimeMillis)]
@@ -35,7 +35,7 @@
                    (str (format "%.2f " (double t))
                         (activation net 0) " "
                         (activation net 1) "\n"))
-           (if (not (>= t 10))
+           (if (not (>= t 100))
              (recur (+ t 0.01) (update-potentials-runge-kutta net))
              net))
          0)
