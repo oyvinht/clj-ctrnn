@@ -13,9 +13,9 @@
     (set-weight 0 1 10)
     (set-weight 1 0 -10)))
       
-(defn t-sensible-activation []
-  (is (= (activation (make-test-net) 0)
-         0.0066928509242848554)))
+;(defn t-sensible-activation []
+;  (is (= (activation (make-test-net) 0)
+;         0.0066928509242848554)))
            
 ;(defn t-check-change-estimate []
 ;  (let [net (make-test-net)]
@@ -31,11 +31,11 @@
        (=
         (activation
          (loop [t 0 net (make-test-net)]
-           (.write w
-                   (str (format "%.2f " (double t))
-                        (activation net 0) " "
-                        (activation net 1) "\n"))
-           (if (not (>= t 100))
+;           (.write w
+;                   (str (format "%.2f " (double t))
+;                        (activation net 0) " "
+;                        (activation net 1) "\n"))
+           (if (not (>= t 1000))
              (recur (+ t 0.01) (update-potentials-runge-kutta net))
              net))
          0)

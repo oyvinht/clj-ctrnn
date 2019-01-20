@@ -14,9 +14,9 @@
    :stepsize stepsize
    :time-constants (double-array size)})
 
-;(defn activation [ctrnn idx]
-;  (/ 1 (+ 1 (Math/exp (- (+ (aget (:potentials ctrnn) idx)
-;                            (aget (:biases ctrnn) idx)))))))
+(defn activation [ctrnn idx]
+  (/ 1 (+ 1 (Math/exp (- (+ (aget ^doubles (:potentials ctrnn) idx)
+                            (aget ^doubles (:biases ctrnn) idx)))))))
 
 (defn set-bias [ctrnn idx bias]
   (assoc ctrnn :biases
@@ -64,36 +64,45 @@
     ;; Cache current activations
     (dotimes [idx (:size ctrnn)]
       (aset-double activations idx (sigmoid (aget ^doubles potentials idx) (aget ^doubles biases idx))))
-    ;; Calculate changes for k1
+    ;; Calculate changes for k1 and update activations
     (dotimes [idx (:size ctrnn)]
       (aset-double k1-changes idx
                    (* stepsize
                       (/ (- (inputs idx) (aget ^doubles potentials idx))
                          (aget ^doubles time-constants idx))))
-      (aset-double k-potentials idx (+ (aget ^doubles potentials idx) (/ (aget ^doubles k1-changes idx) 2))))
-    ;; Update current activations
-    (dotimes [idx (:size ctrnn)]
-      (aset-double activations idx (sigmoid (aget ^doubles potentials idx) (aget ^doubles biases idx))))
+      (aset-double k-potentials idx (+ (aget ^doubles potentials idx) (/ (aget ^doubles k1-changes idx) 2)))
+      (aset-double activations idx (sigmoid (aget ^doubles k-potentials idx) (aget ^doubles biases idx))))
     ;; Calculate changes for k2
     (dotimes [idx (:size ctrnn)]
-      (aset-double k1-changes idx
+      (aset-double k2-changes idx
                    (* stepsize
-                      (/ (- (inputs idx) (aget ^doubles potentials idx))
+                      (/ (- (inputs idx) (aget ^doubles k-potentials idx))
                          (aget ^doubles time-constants idx))))
-      (aset-double k-potentials idx (+ (aget ^doubles potentials idx) (/ (aget ^doubles k1-changes idx) 2))))
-    
-    
-;;      (aset k-potentials idx (+ (aget potentials idx)
-     
-;;      (aset k-potentials idx (+ (aget potentials idx)
-;;                                (aget k4-changes idx))))
-    ;; Calcuate averages
-;;    (dotimes [idx (:size ctrnn)]
-;;      (aset k-potentials idx (+ (aget potentials idx)
-;;                                (/ (+ (aget k1-changes idx)
-;;                                      (* 2 (aget k2-changes idx))
-;;                                      (* 2 (aget k3-changes idx))
-;;                                      (aget k4-changes idx))
-;;                                   6))))
+      (aset-double k-potentials idx (+ (aget ^doubles potentials idx) (/ (aget ^doubles k2-changes idx) 2))))
+    ;; Update activations
+    (dotimes [idx (:size ctrnn)]
+      (aset-double activations idx (sigmoid (aget ^doubles k-potentials idx) (aget ^doubles biases idx))))
+    ;; Calculate changes for k3
+    (dotimes [idx (:size ctrnn)]
+      (aset-double k3-changes idx
+                   (* stepsize
+                      (/ (- (inputs idx) (aget ^doubles k-potentials idx))
+                         (aget ^doubles time-constants idx))))
+      (aset-double k-potentials idx (+ (aget ^doubles potentials idx) (aget ^doubles k3-changes idx))))
+    ;; Update activations
+    (dotimes [idx (:size ctrnn)]
+      (aset-double activations idx (sigmoid (aget ^doubles k-potentials idx) (aget ^doubles biases idx))))
+    ;; Calculate changes for k4
+    (dotimes [idx (:size ctrnn)]
+      (aset-double k4-changes idx
+                   (* stepsize
+                      (/ (- (inputs idx) (aget ^doubles k-potentials idx))
+                         (aget ^doubles time-constants idx))))
+      (aset-double k-potentials idx (+ (aget ^doubles potentials idx)
+                                       (/ (+ (aget ^doubles k1-changes idx)
+                                             (* 2 (aget ^doubles k2-changes idx))
+                                             (* 2 (aget ^doubles k3-changes idx))
+                                             (aget ^doubles k4-changes idx))
+                                          6))))
     (assoc ctrnn :potentials k-potentials)))
   
