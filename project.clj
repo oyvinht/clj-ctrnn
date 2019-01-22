@@ -8,5 +8,6 @@
    }
   :codox {:output-path "docs"}
   :dependencies [[org.clojure/clojure "1.9.0"]]
+  :java-source-paths ["src/java" "test/java"]
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}})
