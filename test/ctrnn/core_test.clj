@@ -111,7 +111,7 @@
       (let [neuron-1 (add-synapse neuron-1 neuron-2 10)
             neuron-2 (add-synapse neuron-2 neuron-1 -10)]
         ;; Loop and write activations to file
-        (with-open [w (clojure.java.io/writer "tex/net-output.dat")]
+        (with-open [w (clojure.java.io/writer "tex/net-output_pulse.dat")]
           (loop [t 0
                  net (make-ctrnn [neuron-1 neuron-2] 1/100)]
             (.write w
