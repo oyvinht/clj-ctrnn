@@ -1,108 +1,36 @@
 (ns ctrnn.ctrnn
   "Simulates Continuous-Time Recurrent Neural Networks (CTRNNs)."
   {:author "oyvinht"}
-  (:import [java.lang Math]))
-
-(set! *warn-on-reflection* true)
+  (:import ctrnn.CTRNN))
 
 (defn make-ctrnn [size stepsize]
-  {:biases (double-array size)
-   :external-currents (double-array size)
-   :potentials (double-array size)
-   :weights (into-array (map double-array [size size]))
-   :size size
-   :stepsize stepsize
-   :time-constants (double-array size)})
+  (new CTRNN size stepsize))
 
 (defn activation [ctrnn idx]
-  (/ 1 (+ 1 (Math/exp (- (+ (aget ^doubles (:potentials ctrnn) idx)
-                            (aget ^doubles (:biases ctrnn) idx)))))))
+  (.getActivation ctrnn idx))
 
 (defn set-bias [ctrnn idx bias]
-  (assoc ctrnn :biases
-         (let [a (:biases ctrnn)]
-           (aset-double a idx bias)
-           a)))
-
-(defn set-external-current [ctrnn idx external-current]
-  (assoc ctrnn :external-currents
-         (let [a (:external-currents ctrnn)]
-           (aset-double a idx external-current)
-           a)))
+  (let [new-ctrnn (.clone ctrnn)]
+    (.setBias new-ctrnn idx bias)
+    new-ctrnn))
 
 (defn set-time-constant [ctrnn idx time-constant]
-  (assoc ctrnn :time-constants
-         (let [a (:time-constants ctrnn)]
-           (aset-double a idx time-constant)
-           a)))
+  (let [new-ctrnn (.clone ctrnn)]
+    (.setTimeConstant new-ctrnn idx time-constant)
+    new-ctrnn))
 
 (defn set-weight [ctrnn from-idx to-idx weight]
-  (assoc ctrnn :weights
-         (let [a (:weights ctrnn)]
-           (aset-double a from-idx to-idx weight)
-           a)))
+  (let [new-ctrnn (.clone ctrnn)]
+    (.setWeight new-ctrnn from-idx to-idx weight)
+    new-ctrnn))
 
-(defn sigmoid [potential bias]
-  (/ 1 (+ 1 (Math/exp (- (+ potential bias))))))
+(defn time-constant [ctrnn idx]
+  (.getTimeConstant ctrnn idx))
 
 (defn update-potentials-runge-kutta [ctrnn]
-  (let [biases (:biases ctrnn)
-        external-currents (:external-currents ctrnn)
-        potentials (:potentials ctrnn)
-        time-constants (:time-constants ctrnn)
-        stepsize (:stepsize ctrnn)
-        weights (:weights ctrnn)
-        activations (double-array (:size ctrnn))
-        k1-changes (double-array (:size ctrnn))
-        k2-changes (double-array (:size ctrnn))
-        k3-changes (double-array (:size ctrnn))
-        k4-changes (double-array (:size ctrnn))
-        k-potentials (double-array (:size ctrnn))
-        inputs (fn [idx]
-                 (+ (aget ^doubles external-currents idx)
-                    (apply + (map * activations (aget ^"[[D" weights idx)))))]
-    ;; Cache current activations
-    (dotimes [idx (:size ctrnn)]
-      (aset-double activations idx (sigmoid (aget ^doubles potentials idx) (aget ^doubles biases idx))))
-    ;; Calculate changes for k1 and update activations
-    (dotimes [idx (:size ctrnn)]
-      (aset-double k1-changes idx
-                   (* stepsize
-                      (/ (- (inputs idx) (aget ^doubles potentials idx))
-                         (aget ^doubles time-constants idx))))
-      (aset-double k-potentials idx (+ (aget ^doubles potentials idx) (/ (aget ^doubles k1-changes idx) 2)))
-      (aset-double activations idx (sigmoid (aget ^doubles k-potentials idx) (aget ^doubles biases idx))))
-    ;; Calculate changes for k2
-    (dotimes [idx (:size ctrnn)]
-      (aset-double k2-changes idx
-                   (* stepsize
-                      (/ (- (inputs idx) (aget ^doubles k-potentials idx))
-                         (aget ^doubles time-constants idx))))
-      (aset-double k-potentials idx (+ (aget ^doubles potentials idx) (/ (aget ^doubles k2-changes idx) 2))))
-    ;; Update activations
-    (dotimes [idx (:size ctrnn)]
-      (aset-double activations idx (sigmoid (aget ^doubles k-potentials idx) (aget ^doubles biases idx))))
-    ;; Calculate changes for k3
-    (dotimes [idx (:size ctrnn)]
-      (aset-double k3-changes idx
-                   (* stepsize
-                      (/ (- (inputs idx) (aget ^doubles k-potentials idx))
-                         (aget ^doubles time-constants idx))))
-      (aset-double k-potentials idx (+ (aget ^doubles potentials idx) (aget ^doubles k3-changes idx))))
-    ;; Update activations
-    (dotimes [idx (:size ctrnn)]
-      (aset-double activations idx (sigmoid (aget ^doubles k-potentials idx) (aget ^doubles biases idx))))
-    ;; Calculate changes for k4
-    (dotimes [idx (:size ctrnn)]
-      (aset-double k4-changes idx
-                   (* stepsize
-                      (/ (- (inputs idx) (aget ^doubles k-potentials idx))
-                         (aget ^doubles time-constants idx))))
-      (aset-double k-potentials idx (+ (aget ^doubles potentials idx)
-                                       (/ (+ (aget ^doubles k1-changes idx)
-                                             (* 2 (aget ^doubles k2-changes idx))
-                                             (* 2 (aget ^doubles k3-changes idx))
-                                             (aget ^doubles k4-changes idx))
-                                          6))))
-    (assoc ctrnn :potentials k-potentials)))
-  
+  (let [new-ctrnn (.clone ctrnn)]
+    (.updatePotentialsRK4 new-ctrnn)
+  new-ctrnn))
+
+(defn weight [ctrnn from-idx to-idx]
+  (.getWeight ctrnn from-idx to-idx))
